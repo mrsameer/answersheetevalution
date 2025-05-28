@@ -2,6 +2,7 @@ google-generativeai
 Pillow
 pytesseract
 PyMuPDF
+requests
 
 # For pytesseract to function, Tesseract-OCR must be installed on the system.
 # You may also need to configure the path to the Tesseract executable.
