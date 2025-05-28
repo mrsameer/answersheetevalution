@@ -19,14 +19,14 @@ def extract_answers_with_ollama(question_paper_json: str, answer_script_ocr: str
 You are an expert AI assistant tasked with extracting structured information from a student's answer script based on a provided question paper. Your goal is to identify which questions were attempted and what the corresponding answers are.
 
 **Question Paper (For Reference Only, Do Not Include Answers):**
-```json
+---JSON START---
 {question_paper_json}
-```
+---JSON END---
 
 **Answer Script OCR:**
-```
+---OCR START---
 {answer_script_ocr}
-```
+---OCR END---
 
 **Important:**
 *   **Focus on Extraction, Not Evaluation:** Your primary task is to extract the student's answers as accurately as possible. Do not try to grade the answers or provide feedback on their correctness.
@@ -61,7 +61,7 @@ You are an expert AI assistant tasked with extracting structured information fro
 *   **Partial Answers:** If a student only partially answers a question, extract what's there.
 
 **Expected Output Structure (Example):**
-```json
+---JSON EXAMPLE START---
 {{
   "1a": "The capital of France is Paris.",
   "1b": "The main components of a CPU are the ALU and Control Unit.",
@@ -72,7 +72,7 @@ You are an expert AI assistant tasked with extracting structured information fro
     "student_id": "12345"
   }}
 }}
-```
+---JSON EXAMPLE END---
 
 Based on the provided Question Paper and Answer Script OCR, please extract the answers and return them in the specified JSON format.
 """
