@@ -2,7 +2,7 @@ import requests
 import json
 
 
-def send_request_to_ollama(prompt: str, base_url: str, model_name: str = "gemma3:12b", options: dict = None) -> dict:
+def send_request_to_ollama(prompt: str, base_url: str, model_name: str = "gemma3:12b", options: dict = None, images: list = None) -> dict:
     """
     Sends a request to the Ollama API and returns the response.
 
@@ -11,6 +11,7 @@ def send_request_to_ollama(prompt: str, base_url: str, model_name: str = "gemma3
         base_url: The base URL of the Ollama API.
         model_name: The name of the model to use.
         options: A dictionary of options for the Ollama API.
+        images: A list of base64 encoded image strings.
 
     Returns:
         A dictionary containing the response from the Ollama API.
@@ -24,6 +25,8 @@ def send_request_to_ollama(prompt: str, base_url: str, model_name: str = "gemma3
     }
     if options:
         payload["options"] = options
+    if images:
+        payload["images"] = images
 
     try:
         response = requests.post(api_url, headers=headers, data=json.dumps(payload))
