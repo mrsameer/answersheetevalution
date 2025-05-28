@@ -1,6 +1,7 @@
 import requests
 import json
 
+
 def send_request_to_ollama(prompt: str, base_url: str, model_name: str = "gemma3:12b", options: dict = None) -> dict:
     """
     Sends a request to the Ollama API and returns the response.
@@ -33,20 +34,21 @@ def send_request_to_ollama(prompt: str, base_url: str, model_name: str = "gemma3
     except json.JSONDecodeError:
         return {"error": "Failed to decode JSON response"}
 
+
 if __name__ == '__main__':
     # Example usage (optional, for testing)
     # Replace with your actual Ollama API base URL if different
     ollama_base_url = "http://localhost:11434"
-    
+
     # Example prompt
     example_prompt = "What is the capital of France?"
-    
+
     # Example options (optional)
     example_options = {"temperature": 0.7}
-    
+
     print(f"Sending request to Ollama with prompt: '{example_prompt}'")
     response_data = send_request_to_ollama(example_prompt, ollama_base_url, options=example_options)
-    
+
     if "error" in response_data:
         print(f"Error: {response_data['error']}")
     elif "response" in response_data:

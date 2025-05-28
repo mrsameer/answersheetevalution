@@ -1,7 +1,9 @@
 import json
 from src.ollama_client import send_request_to_ollama
 
-def extract_answers_with_ollama(question_paper_json: str, answer_script_ocr: str, ollama_base_url: str, ollama_model_name: str = "gemma3:12b") -> dict:
+
+def extract_answers_with_ollama(question_paper_json: str, answer_script_ocr: str, ollama_base_url: str,
+                                ollama_model_name: str = "gemma3:12b") -> dict:
     """
     Extracts answers from an answer script OCR using Ollama.
 
@@ -93,10 +95,10 @@ Based on the provided Question Paper and Answer Script OCR, please extract the a
     # Ollama's /api/generate endpoint (when stream=False) returns a JSON where
     # the model's output is in the 'response' field.
     model_content_text = ollama_response_dict.get('response')
-    
-    if model_content_text is None: # Check for None specifically, as empty string might be valid in some edge cases
+
+    if model_content_text is None:  # Check for None specifically, as empty string might be valid in some edge cases
         return {"error": "No 'response' field in Ollama output", "raw_response": ollama_response_dict}
-    
+
     if not isinstance(model_content_text, str):
         return {"error": "'response' field is not a string", "raw_response": ollama_response_dict}
 
@@ -104,7 +106,7 @@ Based on the provided Question Paper and Answer Script OCR, please extract the a
     try:
         # The model's response string is expected to be a JSON representing the structured data
         parsed_output = json.loads(model_content_text)
-        
+
         # Basic validation for top-level keys and type
         if not isinstance(parsed_output, dict):
             return {
@@ -144,17 +146,17 @@ Based on the provided Question Paper and Answer Script OCR, please extract the a
         # with "data" and "exam" as top-level keys. The current LLM prompt needs to be updated
         # in a future step to reflect this. For now, I will implement the validation as requested.
 
-        required_keys = ["data", "exam"] # As per subtask description
+        required_keys = ["data", "exam"]  # As per subtask description
         missing_keys = [key for key in required_keys if key not in parsed_output]
-        
+
         if missing_keys:
             return {
                 "error": f"Model output JSON is missing required top-level keys: {', '.join(missing_keys)}",
                 "raw_model_content": model_content_text,
                 "parsed_json_keys": list(parsed_output.keys())
             }
-            
-        return parsed_output # This is the successfully parsed Python dictionary
+
+        return parsed_output  # This is the successfully parsed Python dictionary
 
     except json.JSONDecodeError as e:
         return {
@@ -162,12 +164,13 @@ Based on the provided Question Paper and Answer Script OCR, please extract the a
             "details": str(e),
             "raw_model_content": model_content_text
         }
-    except Exception as e: # Catch any other unexpected errors during parsing/validation
+    except Exception as e:  # Catch any other unexpected errors during parsing/validation
         return {
             "error": "An unexpected error occurred while processing model output",
             "details": str(e),
-            "raw_model_content": model_content_text # Include raw content for debugging
+            "raw_model_content": model_content_text  # Include raw content for debugging
         }
+
 
 if __name__ == '__main__':
     # Example Usage (Illustrative - requires a running Ollama instance and sample data)
@@ -206,12 +209,12 @@ if __name__ == '__main__':
     # This ollama_model_name is defined in the function signature as a default.
     # To make it available here, it should be defined outside or passed explicitly.
     # For simplicity, let's use the default directly in the print statement or define it.
-    current_model_for_testing = "gemma3:12b" # or extract_answers_with_ollama.__defaults__[0] if it's the first default
+    current_model_for_testing = "gemma3:12b"  # or extract_answers_with_ollama.__defaults__[0] if it's the first default
 
-    ollama_api_base_url = "http://localhost:11434" # Replace if your Ollama runs elsewhere
+    ollama_api_base_url = "http://localhost:11434"  # Replace if your Ollama runs elsewhere
 
     print(f"Attempting to extract answers using Ollama model: {current_model_for_testing}")
-    
+
     # This example call will likely fail if Ollama isn't running or if the model
     # doesn't produce the exact JSON structure with "data" and "exam" keys.
     # The purpose of this __main__ block is illustrative.
@@ -241,7 +244,6 @@ if __name__ == '__main__':
         # print(f"Exam details: {processed_output.get('exam')}")
         # print(f"Answer data: {processed_output.get('data')}")
 
-
     # Example with a non-existent model to test error handling from ollama_client via send_request_to_ollama
     print("\n--- Testing Non-Existent Model ---")
     error_output = extract_answers_with_ollama(
@@ -252,7 +254,7 @@ if __name__ == '__main__':
     )
     if "error" in error_output:
         print(f"Successfully caught error for non-existent model: {error_output['error']}")
-        if "details" in error_output: # If the error came from ollama_client
+        if "details" in error_output:  # If the error came from ollama_client
             print(f"Details: {error_output['details']}")
     else:
         print("Error for non-existent model was not caught as expected.")
