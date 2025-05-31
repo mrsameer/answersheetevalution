@@ -18,6 +18,12 @@ if 'teacher_file_hash' not in st.session_state:
     st.session_state.teacher_file_hash = None
 if 'cached_content' not in st.session_state:
     st.session_state.cached_content = None
+if 'current_grading_results' not in st.session_state: # Initialize for clarity, though logic handles its absence
+    st.session_state.current_grading_results = None
+if 'last_evaluation_feedback' not in st.session_state:
+    st.session_state.last_evaluation_feedback = None
+if 'last_evaluation_stats' not in st.session_state:
+    st.session_state.last_evaluation_stats = None
 
 # Constants
 USD_TO_INR = 83.0  # Exchange rate
@@ -58,12 +64,12 @@ def calculate_cost(tokens, model_name, token_type='input', cached=False, prompt_
     Args:
         tokens (int): The number of tokens.
         model_name (str): The name of the Gemini model used (e.g., "gemini-1.5-flash").
-        token_type (str, optional): Type of tokens, either 'input' or 'output'.
+        token_type (str, optional): Type of tokens, either 'input' or 'output'. 
                                     Defaults to 'input'.
-        cached (bool, optional): Whether the input tokens were from a cached source.
+        cached (bool, optional): Whether the input tokens were from a cached source. 
                                  Defaults to False. Affects input token cost only.
         prompt_length (int, optional): The total length of the prompt (typically input tokens)
-                                       to determine if long-context pricing applies.
+                                       to determine if long-context pricing applies. 
                                        Defaults to 0.
 
     Returns:
@@ -79,7 +85,7 @@ def calculate_cost(tokens, model_name, token_type='input', cached=False, prompt_
     # Determine if it's a long context (>128k tokens for models that support it)
     # This threshold might vary by model, but 128k is a common one for Flash 1.5.
     # For models without 'long' pricing, it will default to 'standard'.
-    is_long = prompt_length > 128000
+    is_long = prompt_length > 128000 
     rate_type = 'long' if is_long else 'standard'
 
     rate = 0
@@ -91,7 +97,7 @@ def calculate_cost(tokens, model_name, token_type='input', cached=False, prompt_
         else: # Fallback if 'cached_input' or 'input' is not defined for the model
             st.warning(f"'{price_category}' pricing not defined for {model_name}. Using standard input rate.")
             rate = model_pricing.get('input', {}).get('standard', 0)
-
+            
     elif token_type == 'output':
         category_rates = model_pricing.get('output')
         if category_rates:
@@ -99,7 +105,7 @@ def calculate_cost(tokens, model_name, token_type='input', cached=False, prompt_
         else: # Fallback if 'output' is not defined
             st.warning(f"'output' pricing not defined for {model_name}. Rate will be 0.")
             rate = 0
-
+            
     if rate == 0 and tokens > 0:
         st.warning(
             f"Could not determine rate for {model_name}, type: {token_type}, "
@@ -116,14 +122,14 @@ def calculate_cost(tokens, model_name, token_type='input', cached=False, prompt_
 def route_page_to_model(page_image, available_models):
     """
     Determines which GenAI model to use for processing a given page.
-
-    This is currently a placeholder. In a future implementation, this function
-    would incorporate logic, potentially using Adobe Document Intelligence or
-    other heuristics, to select the most appropriate and cost-effective model
+    
+    This is currently a placeholder. In a future implementation, this function 
+    would incorporate logic, potentially using Adobe Document Intelligence or 
+    other heuristics, to select the most appropriate and cost-effective model 
     based on the page's content (e.g., text density, presence of images, diagrams).
 
     Args:
-        page_image (PIL.Image.Image): The image of the page to analyze.
+        page_image (PIL.Image.Image): The image of the page to analyze. 
                                      (Currently unused by placeholder logic).
         available_models (list): A list of available GenAI model names.
 
@@ -136,7 +142,7 @@ def route_page_to_model(page_image, available_models):
     if not available_models:
         st.warning("Router Agent: No available models provided. Defaulting to 'gemini-1.5-flash'.")
         return "gemini-1.5-flash" # Fallback if list is empty
-
+    
     # Placeholder logic: always return the first model in the list.
     selected_model = available_models[0]
     # st.info(f"Router Agent: Selected model '{selected_model}' for this page. (Placeholder logic)")
@@ -161,8 +167,9 @@ Evaluation Guidelines:
 *   Award partial credit if a student's answer is partially correct or shows some understanding.
 
 Output Format:
-Return a single JSON object with the following exact structure. Ensure all keys are present.
-If no questions or answers are identifiable on a page, return empty lists for the respective arrays.
+Return ONLY a single JSON object starting with { and ending with }. Do not include any text before or after the JSON object.
+The JSON object must have the following exact structure. Ensure all top-level keys ("teacher_answers_page", "student_answers_page", "evaluations_page") are present.
+If no questions or answers are identifiable on a page, the value for the corresponding key should be an empty list ([]).
 
 {
     "teacher_answers_page": [
@@ -222,29 +229,29 @@ def extract_and_evaluate_with_caching(main_model_placeholder, teacher_images, st
     """
     Processes teacher and student answer sheets page by page.
 
-    For each pair of pages, it uses a router agent (currently a placeholder) to select
-    an appropriate GenAI model. It then calls the selected model to extract answers and
+    For each pair of pages, it uses a router agent (currently a placeholder) to select 
+    an appropriate GenAI model. It then calls the selected model to extract answers and 
     evaluate the student's work against the teacher's key for that specific page.
     The results from all pages are aggregated into a single JSON object.
 
     Document-level caching is currently disabled in this per-page processing flow.
 
     Args:
-        main_model_placeholder (genai.GenerativeModel): A pre-initialized model instance,
+        main_model_placeholder (genai.GenerativeModel): A pre-initialized model instance, 
                                                        currently used as a fallback or for general config.
                                                        (Note: actual page processing uses per-page models).
         teacher_images (list of PIL.Image.Image): List of images for the teacher's answer key.
         student_images (list of PIL.Image.Image): List of images for the student's answer sheet.
         available_models_list (list): A list of model names available for the router agent.
-        use_cache (bool, optional): Flag to indicate if caching should be used.
+        use_cache (bool, optional): Flag to indicate if caching should be used. 
                                     Currently ignored as caching is disabled in this function.
 
     Returns:
         tuple: A tuple containing:
-            - aggregated_results (dict): A JSON-like dictionary containing all extracted
-                                         teacher answers, student answers, and evaluations,
+            - aggregated_results (dict): A JSON-like dictionary containing all extracted 
+                                         teacher answers, student answers, and evaluations, 
                                          aggregated across all processed pages.
-            - overall_stats (dict): A dictionary with statistics about the entire
+            - overall_stats (dict): A dictionary with statistics about the entire 
                                     per-page processing operation (tokens, cost, time, etc.),
                                     including a 'page_details' list with stats for each page.
                                     Returns (None, None) if critical errors occur early.
@@ -272,11 +279,11 @@ def extract_and_evaluate_with_caching(main_model_placeholder, teacher_images, st
     total_output_tokens_overall = 0
     total_cost_usd_overall = 0
     total_cost_inr_overall = 0
-
-    # This is a simplified approach for question numbering.
-    # A more robust solution might involve the model returning global question numbers
+    
+    # This is a simplified approach for question numbering. 
+    # A more robust solution might involve the model returning global question numbers 
     # or using more sophisticated merging logic based on unique question identifiers.
-    question_number_offset = 0
+    question_number_offset = 0 
 
     for i in range(num_pages):
         teacher_page = teacher_images[i]
@@ -284,14 +291,14 @@ def extract_and_evaluate_with_caching(main_model_placeholder, teacher_images, st
         current_page_number_display = i + 1
         
         st.info(f"Processing Page {current_page_number_display} of {num_pages}...")
-
+        
         # 1. Route page to model (placeholder)
         selected_model_for_page_name = route_page_to_model(student_page, available_models_list)
-
+        
         try:
             # 2. Initialize GenerativeModel for this page
             page_model = genai.GenerativeModel(selected_model_for_page_name)
-
+            
             # 3. Prepare content for API call
             content_for_page = [
                 page_evaluation_prompt_template,
@@ -300,18 +307,18 @@ def extract_and_evaluate_with_caching(main_model_placeholder, teacher_images, st
                 f"STUDENT PAGE (Image {current_page_number_display}):",
                 student_page
             ]
-
+            
             page_start_time = time.time()
             # 4. Call model.generate_content
             response_page = page_model.generate_content(content_for_page)
             page_end_time = time.time()
-
+            
             if not response_page or not response_page.text:
                 st.error(f"No response or empty response received from API for page {current_page_number_display} using model {selected_model_for_page_name}.")
                 # Optionally, add a placeholder error entry for this page in results
                 all_page_stats.append({
-                    'page_number': current_page_number_display, 'model_used': selected_model_for_page_name,
-                    'status': 'Error - No API response', 'input_tokens': 0, 'output_tokens': 0,
+                    'page_number': current_page_number_display, 'model_used': selected_model_for_page_name, 
+                    'status': 'Error - No API response', 'input_tokens': 0, 'output_tokens': 0, 
                     'total_tokens': 0, 'cost_usd': 0, 'cost_inr': 0, 'processing_time': page_end_time - page_start_time
                 })
                 continue
@@ -320,19 +327,19 @@ def extract_and_evaluate_with_caching(main_model_placeholder, teacher_images, st
             token_metadata_page = response_page.usage_metadata
             input_tokens_page = token_metadata_page.prompt_token_count if token_metadata_page else 0
             output_tokens_page = token_metadata_page.candidates_token_count if token_metadata_page else 0
-
+            
             total_input_tokens_overall += input_tokens_page
             total_output_tokens_overall += output_tokens_page
 
             input_cost_usd_page, input_cost_inr_page = calculate_cost(
-                input_tokens_page, selected_model_for_page_name,
+                input_tokens_page, selected_model_for_page_name, 
                 token_type='input', cached=False, prompt_length=input_tokens_page
             )
             output_cost_usd_page, output_cost_inr_page = calculate_cost(
-                output_tokens_page, selected_model_for_page_name,
+                output_tokens_page, selected_model_for_page_name, 
                 token_type='output', prompt_length=input_tokens_page # Using input_tokens_page for context length of output
             )
-
+            
             total_cost_usd_page = input_cost_usd_page + output_cost_usd_page
             total_cost_inr_page = input_cost_inr_page + output_cost_inr_page
             total_cost_usd_overall += total_cost_usd_page
@@ -350,28 +357,67 @@ def extract_and_evaluate_with_caching(main_model_placeholder, teacher_images, st
                 'status': 'Processed'
             }
             all_page_stats.append(page_stats)
-
+            
             # 6. Parse page-level JSON response
             response_text_page = response_page.text
+            
+            # --- TEMPORARY DEBUGGING OUTPUT for '0 questions' issue ---
+            # These UI elements display raw and parsed data from the LLM for each page.
+            # They are intended to help diagnose inconsistencies in LLM output that might lead to
+            # the "0 questions found" issue. Review for removal once the issue is confirmed resolved.
+            st.text_area(f"Raw JSON Response (Page {current_page_number_display}, Model: {selected_model_for_page_name})", response_text_page, height=150, key=f"raw_resp_p{current_page_number_display}")
+            # --- END TEMPORARY DEBUGGING ---
+
+            page_result_data = None # Initialize before try block
             try:
                 # Attempt to find the start and end of the JSON block
                 json_start_page = response_text_page.find('{')
                 json_end_page = response_text_page.rfind('}') + 1
                 
-                if json_start_page != -1 and json_end_page != 0:
+                if json_start_page != -1 and json_end_page > json_start_page: # ensure end is after start
                     json_str_page = response_text_page[json_start_page:json_end_page]
                     page_result_data = json.loads(json_str_page)
+                    
+                    # --- TEMPORARY DEBUGGING OUTPUT for '0 questions' issue ---
+                    if page_result_data:
+                        st.json(page_result_data, expanded=False, key=f"parsed_json_p{current_page_number_display}")
+                    # --- END TEMPORARY DEBUGGING ---
                 else:
-                    st.error(f"Could not find valid JSON in response for page {current_page_number_display}. Response text: {response_text_page[:500]}...")
-                    page_stats['status'] = 'Error - JSON not found' # Update status
-                    continue # Skip aggregation for this page if JSON is not found
+                    st.error(f"Could not find valid JSON structure in response for page {current_page_number_display}. Raw response snippet: {response_text_page[:500]}...")
+                    page_stats['status'] = 'Error - JSON structure not found' 
+                    page_stats['raw_response_snippet'] = response_text_page[:200] # Store snippet for history
+                    continue 
             except json.JSONDecodeError as json_err:
-                st.error(f"Failed to parse JSON response for page {current_page_number_display}. Error: {json_err}. Response text: {response_text_page[:500]}...")
-                page_stats['status'] = 'Error - JSON parsing failed' # Update status
-                continue # Skip aggregation for this page if JSON parsing fails
-                
-                # 7. Aggregate results
-                max_q_num_on_this_page = 0
+                st.error(f"Failed to parse JSON response for page {current_page_number_display}. Error: {json_err}. Raw response snippet: {response_text_page[:500]}...")
+                page_stats['status'] = 'Error - JSON parsing failed'
+                page_stats['raw_response_snippet'] = response_text_page[:200] # Store snippet for history
+                continue 
+            
+            if not page_result_data: # If page_result_data is None after attempts
+                st.error(f"page_result_data is None for page {current_page_number_display}, skipping aggregation for this page.")
+                page_stats['status'] = 'Error - Parsed data is None'
+                continue
+
+            # 7. Aggregate results
+            # Ensure the keys exist in page_result_data, use .get() for safety
+            teacher_answers_on_page = page_result_data.get("teacher_answers_page", [])
+            student_answers_on_page = page_result_data.get("student_answers_page", [])
+            evaluations_on_page = page_result_data.get("evaluations_page", [])
+
+            if not isinstance(teacher_answers_on_page, list) or \
+               not isinstance(student_answers_on_page, list) or \
+               not isinstance(evaluations_on_page, list):
+                st.error(f"Invalid data structure in parsed JSON for page {current_page_number_display}. Expected lists for main keys. Skipping aggregation for this page.")
+                page_stats['status'] = 'Error - Invalid JSON data structure'
+                page_stats['parsed_data_snippet'] = str(page_result_data)[:200]
+                continue
+            
+            if not evaluations_on_page: # If there are no evaluations, it might indicate an issue or an empty page
+                st.warning(f"No evaluations found in the response for page {current_page_number_display}. This page might contribute 0 questions to the total.")
+                # This is not necessarily an error to stop processing, but good to note.
+                # The page_stats will reflect 0 tokens for this page's LLM call if it truly returned nothing useful.
+
+            max_q_num_on_this_page = 0
 
                 def get_page_q_num_val(q_num_str):
                     # Extracts numeric part for offset calculation if possible
@@ -394,7 +440,7 @@ def extract_and_evaluate_with_caching(main_model_placeholder, teacher_images, st
                              agg_q_num = f"P{current_page_number_display}-{page_q_num}"
                     except:
                          agg_q_num = f"P{current_page_number_display}-{page_q_num}"
-
+                    
                     aggregated_results["teacher_answers"].append({
                         "question_number": agg_q_num,
                         "question_text": ta_page.get("question_text_page", "N/A"),
@@ -451,8 +497,8 @@ def extract_and_evaluate_with_caching(main_model_placeholder, teacher_images, st
             # Add error entry to page_stats if an unexpected error occurs before stats are added
             if not any(p['page_number'] == current_page_number_display for p in all_page_stats):
                  all_page_stats.append({
-                    'page_number': current_page_number_display, 'model_used': selected_model_for_page_name,
-                    'status': f'Error - Unhandled: {str(e_page)[:100]}', 'input_tokens': 0, 'output_tokens': 0,
+                    'page_number': current_page_number_display, 'model_used': selected_model_for_page_name, 
+                    'status': f'Error - Unhandled: {str(e_page)[:100]}', 'input_tokens': 0, 'output_tokens': 0, 
                     'total_tokens': 0, 'cost_usd': 0, 'cost_inr': 0, 'processing_time': 0
                 })
             else: # If stats entry exists, update status
@@ -463,7 +509,7 @@ def extract_and_evaluate_with_caching(main_model_placeholder, teacher_images, st
             continue # Continue to the next page
             
     overall_end_time = time.time()
-
+    
     # Consolidate overall statistics
     overall_stats = {
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -483,7 +529,7 @@ def extract_and_evaluate_with_caching(main_model_placeholder, teacher_images, st
         'savings_inr': 0,
         'processing_time': overall_end_time - overall_start_time,
         'num_pages_processed': num_pages,
-        'page_details': all_page_stats
+        'page_details': all_page_stats 
     }
     st.session_state.token_history.append(overall_stats)
 
@@ -530,10 +576,10 @@ def run_evaluation_agent(grading_results_json, evaluation_model_name):
     Runs a GenAI model to perform a meta-evaluation on the initial grading results.
 
     Args:
-        grading_results_json (dict): The JSON output from
-                                     `extract_and_evaluate_with_caching`
+        grading_results_json (dict): The JSON output from 
+                                     `extract_and_evaluate_with_caching` 
                                      (the `aggregated_results`).
-        evaluation_model_name (str): The name of the Gemini model to be used
+        evaluation_model_name (str): The name of the Gemini model to be used 
                                      for this meta-evaluation.
 
     Returns:
@@ -559,7 +605,7 @@ def run_evaluation_agent(grading_results_json, evaluation_model_name):
         if not response or not response.text: # Check if response or response.text is empty
             st.error(f"Evaluation Agent: No response or empty response received from API using model {evaluation_model_name}.")
             return None, None # Return None for both feedback and stats on error
-
+            
         feedback_text = response.text # The raw text from the model
         
         # Extract token counts
@@ -596,7 +642,7 @@ def run_evaluation_agent(grading_results_json, evaluation_model_name):
             'input_cost_inr': input_cost_inr,
             'output_cost_inr': output_cost_inr,
             'total_cost_inr': total_cost_inr,
-            'cached': False,
+            'cached': False, 
             'savings_usd': 0,
             'savings_inr': 0,
             'processing_time': end_time - start_time
@@ -627,7 +673,7 @@ def main():
     # Configure Gemini
     try:
         genai.configure(api_key=api_key)
-
+        
         available_models_tuple = ("gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro")
         # The main dropdown now selects a default/fallback model.
         # The router might override this on a per-page basis.
@@ -635,12 +681,12 @@ def main():
             "Select Default/Fallback Gemini Model", # Label changed
             available_models_tuple
         )
-
+        
         # This model instance is primarily for configuration reference or as a fallback.
         main_model_instance = genai.GenerativeModel(default_model_name)
         # st.session_state.selected_model_name = default_model_name # This was for caching model name
         st.session_state.available_models = list(available_models_tuple) # Store as list for router
-
+        
     except Exception as e:
         st.error(f"Error configuring Gemini: {str(e)}")
         return
@@ -654,7 +700,7 @@ def main():
         for model_disp_name, prices in PRICING_USD.items():
             st.markdown(f"#### {model_disp_name.replace('-', ' ').title()}")
             md_table = f"| Context Length | Input (per 1M tokens) | Output (per 1M tokens) |\n|---|---|---|\n"
-
+            
             std_input_usd = prices.get('input', {}).get('standard', 'N/A')
             std_output_usd = prices.get('output', {}).get('standard', 'N/A')
             std_input_inr = f"₹{std_input_usd * USD_TO_INR:.2f}" if isinstance(std_input_usd, (int, float)) else "N/A"
@@ -676,7 +722,7 @@ def main():
                     cached_long_usd = prices['cached_input'].get('long', 'N/A')
                     cached_long_inr = f"₹{cached_long_usd * USD_TO_INR:.2f}" if isinstance(cached_long_usd, (int, float)) else "N/A"
                     md_table += f"| Cached Input (Long) | {cached_long_inr} (${cached_long_usd}) | - |\n"
-
+            
             cache_storage_hourly_usd = prices.get('cache_storage_hourly', 'N/A')
             cache_storage_hourly_inr = f"₹{cache_storage_hourly_usd * USD_TO_INR:.4f}" if isinstance(cache_storage_hourly_usd, (int, float)) else "N/A"
             if cache_storage_hourly_usd != 'N/A':
@@ -733,11 +779,11 @@ def main():
                            st.session_state.teacher_file_hash == file_hash)
                 
                 # Extract and evaluate using the new per-page logic
-                # Pass the main_model_instance (as a placeholder/default config)
+                # Pass the main_model_instance (as a placeholder/default config) 
                 # and the list of available_models.
                 result_data, stats = extract_and_evaluate_with_caching(
                     main_model_instance, # Pass the instance configured with default model
-                    teacher_images,
+                    teacher_images, 
                     student_images,
                     st.session_state.available_models, # Pass the list of model names
                     use_cache=False # Document-level caching is effectively disabled here
@@ -757,7 +803,7 @@ def main():
                     with col4:
                         # Overall 'cached' status is False due to per-page processing.
                         # Individual page caching might be a future feature.
-                        st.metric("Cache Status", "Per-Page Routing")
+                        st.metric("Cache Status", "Per-Page Routing") 
                         if stats.get('savings_inr', 0) > 0 : # This should be 0 for now
                              st.metric("Savings", f"₹{stats['savings_inr']:.4f}")
                     
@@ -778,11 +824,11 @@ def main():
                             st.write(f"- Input Cost (Approx): ₹{stats.get('input_cost_inr',0):.4f} (${stats.get('input_cost_usd',0):.6f})")
                             st.write(f"- Output Cost (Approx): ₹{stats.get('output_cost_inr',0):.4f} (${stats.get('output_cost_usd',0):.6f})")
                             st.write(f"- **Total Cost: ₹{stats.get('total_cost_inr',0):.4f} (${stats.get('total_cost_usd',0):.6f})**")
-
+                        
                         if 'page_details' in stats and stats['page_details']:
                             st.write("---")
                             st.write("**Per-Page Processing Details (Router Agent Choices):**")
-
+                            
                             per_page_md = "| Page | Model Used | Input Tokens | Output Tokens | Total Tokens | Cost (INR) | Time (s) |\n"
                             per_page_md += "|---|---|---|---|---|---|---|\n"
                             for page_stat in stats['page_details']:
@@ -838,7 +884,7 @@ def main():
                     # Display detailed results
                     st.write("### 📝 Detailed Results")
                     # Store result_data in session state to make it available for the evaluation agent button
-                    st.session_state.current_grading_results = result_data
+                    st.session_state.current_grading_results = result_data 
                     for result in graded_results:
                         # Determine color based on verdict
                         if result['verdict'] == 'Correct':
@@ -874,7 +920,7 @@ def main():
             if 'current_grading_results' in st.session_state and st.session_state.current_grading_results:
                 st.write("---")
                 st.subheader("🕵️ Evaluation Agent: Assess Grading Quality")
-
+                
                 eval_agent_model_name = st.selectbox(
                     "Select Evaluation Agent Model",
                     st.session_state.available_models, # Use the same list of available models
@@ -888,13 +934,20 @@ def main():
                             st.session_state.current_grading_results,
                             eval_agent_model_name
                         )
-
-                        if feedback and eval_stats:
+                        
+                        # Always update session state for feedback and stats
+                        # This ensures that if an error occurs and feedback/stats are None,
+                        # the UI will reflect that (e.g., hide feedback area or show error message if feedback is an error string)
+                        st.session_state.last_evaluation_feedback = feedback
+                        st.session_state.last_evaluation_stats = eval_stats
+                        
+                        if eval_stats: # Only append to history if stats were successfully generated
                             st.session_state.token_history.append(eval_stats)
-                            st.session_state.last_evaluation_feedback = feedback # Store for display
-                            st.session_state.last_evaluation_stats = eval_stats
+                        # If feedback is None due to an error in run_evaluation_agent, 
+                        # the error would have been displayed via st.error within that function.
+                        # The UI below will then not display the feedback area.
 
-                if 'last_evaluation_feedback' in st.session_state:
+                if st.session_state.get('last_evaluation_feedback'): # Use .get() for safety, displays if feedback is not None/empty
                     st.markdown("#### Evaluation Agent Feedback:")
                     # Try to parse feedback as JSON for pretty display, otherwise show as text
                     try:
@@ -902,14 +955,17 @@ def main():
                         st.json(feedback_json)
                     except json.JSONDecodeError:
                         st.text_area("Feedback", st.session_state.last_evaluation_feedback, height=300)
-
-                    eval_stats_display = st.session_state.last_evaluation_stats
-                    st.caption(
-                        f"Evaluation Agent ({eval_stats_display['type'].split('(')[-1][:-1]}) - "
-                        f"Tokens: {eval_stats_display['total_tokens']:,} | "
-                        f"Cost: ₹{eval_stats_display['total_cost_inr']:.4f} | "
-                        f"Time: {eval_stats_display['processing_time']:.2f}s"
-                    )
+                    
+                    eval_stats_display = st.session_state.get('last_evaluation_stats')
+                    if eval_stats_display:
+                        st.caption(
+                            f"Evaluation Agent ({eval_stats_display.get('type', 'N/A').split('(')[-1][:-1] if '(' in eval_stats_display.get('type', '') else eval_stats_display.get('type', 'N/A')}) - "
+                            f"Tokens: {eval_stats_display.get('total_tokens', 0):,} | "
+                            f"Cost: ₹{eval_stats_display.get('total_cost_inr', 0):.4f} | "
+                            f"Time: {eval_stats_display.get('processing_time', 0):.2f}s"
+                        )
+                    else:
+                        st.caption("Evaluation Agent statistics are not available (e.g. due to an error during evaluation).")
     
     # Token usage history
     if st.session_state.token_history:
